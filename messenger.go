@@ -52,6 +52,7 @@ type Messenger struct {
 	readHandlers     []ReadHandler
 	postBackHandlers []PostBackHandler
 	token            string
+	webhookURL       string
 	verifyHandler    func(http.ResponseWriter, *http.Request)
 }
 
@@ -61,17 +62,17 @@ func New(mo Options) *Messenger {
 		mo.Mux = http.NewServeMux()
 	}
 
-	m := &Messenger{
-		mux:   mo.Mux,
-		token: mo.Token,
-	}
-
 	if mo.WebhookURL == "" {
 		mo.WebhookURL = "/"
 	}
 
+	m := &Messenger{
+		token:      mo.Token,
+		webhookURL: mo.WebhookURL,
+	}
+
 	m.verifyHandler = newVerifyHandler(mo.VerifyToken)
-	m.mux.HandleFunc(mo.WebhookURL, m.handle)
+	m.SetHandler(mo.Mux)
 
 	return m
 }
@@ -102,6 +103,12 @@ func (m *Messenger) HandlePostBack(f PostBackHandler) {
 // Handler returns the Messenger in HTTP client form.
 func (m *Messenger) Handler() http.Handler {
 	return m.mux
+}
+
+// SetHandler set handler
+func (m *Messenger) SetHandler(mux *http.ServeMux) {
+	m.mux = mux
+	m.mux.HandleFunc(m.webhookURL, m.handle)
 }
 
 // ProfileByID retrieves the Facebook user associated with that ID
